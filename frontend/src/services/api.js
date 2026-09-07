@@ -7,7 +7,7 @@
  *   know or care about HTTP details.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL || "";
 
 /**
  * Send a PR URL to the backend and receive the full review.
