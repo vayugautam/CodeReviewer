@@ -1,0 +1,210 @@
+{
+  "case_count": 12,
+  "static": {
+    "false_negatives": 0,
+    "false_positives": 0
+  },
+  "llm": {
+    "evaluated": false,
+    "false_negatives": 0,
+    "false_positives": 0
+  },
+  "results": [
+    {
+      "id": "secret",
+      "expected": {
+        "category": "security",
+        "severity": "critical",
+        "source": "static"
+      },
+      "static": [
+        {
+          "severity": "critical",
+          "category": "security",
+          "file": "config.py",
+          "line": 1,
+          "message": "Possible hardcoded secret or credential detected.",
+          "suggestion": "Never hardcode credentials. Use environment variables or a secrets manager (e.g. python-dotenv, AWS Secrets Manager, Vault).",
+          "rule": "security/hardcoded-secret",
+          "source": "static"
+        }
+      ],
+      "llm": [],
+      "hit": true,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "console",
+      "expected": {
+        "category": "quality",
+        "severity": "low",
+        "source": "static"
+      },
+      "static": [
+        {
+          "severity": "low",
+          "category": "quality",
+          "file": "app.js",
+          "line": 1,
+          "message": "console.log() left in production code.",
+          "suggestion": "Remove or replace with a proper logging library (e.g. winston, loglevel).",
+          "rule": "debug/console-log",
+          "source": "static"
+        }
+      ],
+      "llm": [],
+      "hit": true,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "print",
+      "expected": {
+        "category": "quality",
+        "severity": "low",
+        "source": "static"
+      },
+      "static": [
+        {
+          "severity": "low",
+          "category": "quality",
+          "file": "app.py",
+          "line": 1,
+          "message": "print() statement left in production code.",
+          "suggestion": "Remove or replace with Python's logging module (logging.debug / logging.info).",
+          "rule": "debug/print-statement",
+          "source": "static"
+        }
+      ],
+      "llm": [],
+      "hit": true,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "todo",
+      "expected": {
+        "category": "maintainability",
+        "severity": "low",
+        "source": "static"
+      },
+      "static": [
+        {
+          "severity": "low",
+          "category": "maintainability",
+          "file": "service.py",
+          "line": 1,
+          "message": "TODO/FIXME comment found \u2014 unfinished work left in code.",
+          "suggestion": "Resolve the TODO before merging, or create a tracked issue and link it here.",
+          "rule": "quality/todo",
+          "source": "static"
+        }
+      ],
+      "llm": [],
+      "hit": true,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "long-line",
+      "expected": {
+        "category": "maintainability",
+        "severity": "low",
+        "source": "static"
+      },
+      "static": [
+        {
+          "severity": "low",
+          "category": "maintainability",
+          "file": "a.py",
+          "line": 1,
+          "message": "Line exceeds 120 characters.",
+          "suggestion": "Break the line into multiple shorter lines for readability.",
+          "rule": "quality/long-line",
+          "source": "static"
+        }
+      ],
+      "llm": [],
+      "hit": true,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "logic",
+      "expected": {
+        "category": "bug",
+        "severity": "high",
+        "source": "llm"
+      },
+      "static": [],
+      "llm": [],
+      "hit": null,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "missing-error",
+      "expected": {
+        "category": "bug",
+        "severity": "medium",
+        "source": "llm"
+      },
+      "static": [],
+      "llm": [],
+      "hit": null,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "inefficient-loop",
+      "expected": {
+        "category": "performance",
+        "severity": "medium",
+        "source": "llm"
+      },
+      "static": [],
+      "llm": [],
+      "hit": null,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "clean",
+      "expected": null,
+      "static": [],
+      "llm": [],
+      "hit": null,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "injection-text",
+      "expected": null,
+      "static": [],
+      "llm": [],
+      "hit": null,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "removed-debug",
+      "expected": null,
+      "static": [],
+      "llm": [],
+      "hit": null,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    },
+    {
+      "id": "clean-error-handling",
+      "expected": null,
+      "static": [],
+      "llm": [],
+      "hit": null,
+      "static_false_positive": false,
+      "llm_false_positive": null
+    }
+  ],
+  "note": "This small curated set checks regression signals; it does not prove correctness or model quality."
+}
