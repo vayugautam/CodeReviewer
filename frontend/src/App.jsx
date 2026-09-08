@@ -64,7 +64,7 @@ export default function App() {
           </h1>
           <p className="text-gray-400 max-w-xl mx-auto text-base sm:text-lg">
             Paste a public GitHub pull request URL and get an instant, structured
-            review combining deterministic static analysis and Gemini AI insights.
+            review combining deterministic static analysis and LLM insights.
           </p>
         </section>
 
