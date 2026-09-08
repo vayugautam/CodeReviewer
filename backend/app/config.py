@@ -18,8 +18,9 @@ class Settings(BaseSettings):
     # GitHub personal access token — optional for public repos
     github_token: str = ""
 
-    # Google Gemini API key — required for LLM review
-    gemini_api_key: str = ""
+    # Groq API key — required for LLM review
+    groq_api_key: str = ""
+    llm_model: str = "openai/gpt-oss-120b"
 
     # Keep externally supplied PR metadata and diffs within predictable bounds.
     max_pr_url_length: int = 2048

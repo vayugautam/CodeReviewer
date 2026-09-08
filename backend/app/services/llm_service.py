@@ -1,11 +1,11 @@
 """
-services/llm_service.py — LLM-powered semantic code review using Google Gemini.
+services/llm_service.py — LLM-powered semantic code review using Groq.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   CONCEPT 1 — System Prompt vs User Content
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  The Gemini API (like OpenAI's) uses a two-part conversation structure:
+  The Groq API uses a two-part conversation structure:
 
     System prompt:   Permanent, trusted instructions set by the developer.
                      Tells the model WHO it is and WHAT its rules are.
@@ -98,10 +98,7 @@ from __future__ import annotations
 import json
 import logging
 
-try:
-    import google.generativeai as genai
-except ImportError:  # Allows validation-only tests without an API client installed.
-    genai = None
+from groq import Groq
 from pydantic import ValidationError
 
 from app.config import settings
@@ -113,19 +110,16 @@ logger = logging.getLogger(__name__)
 # ── Constants ─────────────────────────────────────────────────────────────────
 
 # Max characters of diff sent to the LLM.
-# Gemini 2.5 Flash has a large context window.  We cap at 40k chars
+# The selected model has a large context window.  We cap at 40k chars
 # (~10k tokens) to keep the prompt focused and the response fast.
 # Large PRs should be split into smaller ones anyway — that's good practice.
 _MAX_DIFF_CHARS = 40_000
 
-_MODEL_NAME = "gemini-2.5-flash"
-
-
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 #  SYSTEM PROMPT — trusted developer instructions
 #
-#  This is set once via the API's system_instruction field and is NOT
-#  part of the user message.  The model treats it as authoritative context
+#  This is sent as a system message and is NOT part of the user message.
+#  The model treats it as authoritative context
 #  that frames every response it produces.
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -445,7 +439,7 @@ def review_with_llm(
     static_findings: list[Finding],
 ) -> ReviewResponse:
     """
-    Send the PR context to Gemini and return a validated ReviewResponse.
+    Send the PR context to Groq and return a validated ReviewResponse.
 
     Parameters
     ----------
@@ -458,33 +452,22 @@ def review_with_llm(
 
     Flow
     ----
-    1. Configure Gemini with our API key.
+    1. Configure Groq with our API key.
     2. Build the user prompt (diff + static findings context).
-    3. Send to Gemini with the system prompt set as system_instruction.
+    3. Send to Groq with the system prompt as a system message.
     4. Parse and Pydantic-validate the response.
     5. If validation fails → one correction attempt.
     6. If that also fails → raise LLMServiceError (HTTP 503 at the router).
 
     The LLM is NEVER given raw code to execute — it only reads and analyses.
     """
-    if not settings.gemini_api_key:
+    if not settings.groq_api_key:
         raise LLMServiceError(
-            "GEMINI_API_KEY is not configured. "
+        "GROQ_API_KEY is not configured. "
             "Copy backend/.env.example to backend/.env and set your key."
         )
-    if genai is None:
-        raise LLMServiceError("Gemini client is not installed on the server.")
-
-    # Configure the Gemini client with our key
-    genai.configure(api_key=settings.gemini_api_key)
-
-    # GenerativeModel accepts system_instruction separately from the user message.
-    # This is how we keep trusted instructions structurally separate from the
-    # untrusted diff content.
-    model = genai.GenerativeModel(
-        model_name=_MODEL_NAME,
-        system_instruction=_SYSTEM_PROMPT,
-    )
+    client = Groq(api_key=settings.groq_api_key)
+    model_name = settings.llm_model
 
     user_prompt = _build_user_prompt(
         pr_title=pr_title,
@@ -495,20 +478,26 @@ def review_with_llm(
 
     # ── Attempt 1: primary review call ────────────────────────────────────
     logger.info(
-        "Calling Gemini (%s) for LLM review — %d files, %d static findings",
-        _MODEL_NAME,
+        "Calling Groq (%s) for LLM review — %d files, %d static findings",
+        model_name,
         len(changed_files),
         len(static_findings),
     )
     try:
-        response_1 = model.generate_content(
-            user_prompt,
-            generation_config={"response_mime_type": "application/json", "temperature": 0.1},
+        response_1 = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            reasoning_effort="low",
         )
-        raw_1 = response_1.text
+        raw_1 = response_1.choices[0].message.content
     except Exception as exc:
-        logger.exception("Gemini primary request failed")
-        raise LLMServiceError("Gemini did not return a usable review.") from exc
+        logger.exception("Groq primary request failed")
+        raise LLMServiceError("Groq did not return a usable review.") from exc
 
     try:
         result = _parse_llm_response(raw_1)
@@ -523,19 +512,26 @@ def review_with_llm(
         first_error = err   # keep a reference for the correction prompt
 
     # ── Attempt 2: single correction ──────────────────────────────────────
-    # We use a chat session so the model has the full conversation in context:
-    # original prompt → broken response → correction request.
-    logger.info("Sending correction prompt to Gemini (attempt 2)…")
+    # Send the full conversation so the model can correct its original response.
+    logger.info("Sending correction prompt to Groq (attempt 2)…")
     correction_prompt = _build_correction_prompt(raw_1, str(first_error))
-
-    chat = model.start_chat()
-    chat.send_message(user_prompt)             # original request in context
     try:
-        response_2 = chat.send_message(correction_prompt)
-        raw_2 = response_2.text
+        response_2 = client.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+                {"role": "assistant", "content": raw_1},
+                {"role": "user", "content": correction_prompt},
+            ],
+            response_format={"type": "json_object"},
+            temperature=0.1,
+            reasoning_effort="low",
+        )
+        raw_2 = response_2.choices[0].message.content
     except Exception as exc:
-        logger.exception("Gemini correction request failed")
-        raise LLMServiceError("Gemini did not return a usable corrected review.") from exc
+        logger.exception("Groq correction request failed")
+        raise LLMServiceError("Groq did not return a usable corrected review.") from exc
 
     try:
         result = _parse_llm_response(raw_2)

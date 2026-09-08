@@ -55,38 +55,42 @@ def test_rejects_extra_fields_and_non_integer_line_numbers():
         _parse_llm_response(json.dumps(invalid))
 
 
+class Message:
+    def __init__(self, content): self.content = content
+
+
+class Choice:
+    def __init__(self, content): self.message = Message(content)
+
+
 class Response:
-    def __init__(self, text): self.text = text
+    def __init__(self, content): self.choices = [Choice(content)]
+
+
+class Completions:
+    def __init__(self, first, corrected): self.first, self.corrected, self.calls = first, corrected, []
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return Response(self.first if len(self.calls) == 1 else self.corrected)
 
 
 class Chat:
-    def __init__(self, corrected): self.corrected, self.calls = corrected, 0
-    def send_message(self, _):
-        self.calls += 1
-        return Response(self.corrected if self.calls == 2 else "ignored")
+    def __init__(self, first, corrected): self.completions = Completions(first, corrected)
 
 
-class Model:
-    def __init__(self, first, corrected, **_): self.first, self.chat = first, Chat(corrected)
-    def generate_content(self, *_ , **__): return Response(self.first)
-    def start_chat(self): return self.chat
-
-
-class FakeGenAI:
-    def __init__(self, first, corrected): self.first, self.corrected = first, corrected
-    def configure(self, **_): pass
-    def GenerativeModel(self, **kwargs): return Model(self.first, self.corrected, **kwargs)
+class FakeGroq:
+    def __init__(self, first, corrected, **_): self.chat = Chat(first, corrected)
 
 
 def test_validation_failure_gets_one_successful_correction(monkeypatch):
-    monkeypatch.setattr(llm_service.settings, "gemini_api_key", "test-key")
-    monkeypatch.setattr(llm_service, "genai", FakeGenAI("not json", payload()))
+    monkeypatch.setattr(llm_service.settings, "groq_api_key", "test-key")
+    monkeypatch.setattr(llm_service, "Groq", lambda **kwargs: FakeGroq("not json", payload(), **kwargs))
     review = review_with_llm("title", "", [ChangedFile("a.py", "modified", 0, 0)], [])
     assert review.overall_status.value == "approve"
 
 
 def test_retry_failure_returns_controlled_error(monkeypatch):
-    monkeypatch.setattr(llm_service.settings, "gemini_api_key", "test-key")
-    monkeypatch.setattr(llm_service, "genai", FakeGenAI("not json", "still not json"))
+    monkeypatch.setattr(llm_service.settings, "groq_api_key", "test-key")
+    monkeypatch.setattr(llm_service, "Groq", lambda **kwargs: FakeGroq("not json", "still not json", **kwargs))
     with pytest.raises(LLMServiceError, match="after 2 attempts"):
         review_with_llm("title", "", [ChangedFile("a.py", "modified", 0, 0)], [])

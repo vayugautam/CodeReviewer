@@ -2,7 +2,7 @@ services:
   backend:
     build: ./backend
     environment:
-      GEMINI_API_KEY: ${GEMINI_API_KEY:?Set GEMINI_API_KEY in your shell or .env file}
+      GROQ_API_KEY: ${GROQ_API_KEY:?Set GROQ_API_KEY in your shell or .env file}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       FRONTEND_ORIGIN: http://localhost:8080
     expose:
