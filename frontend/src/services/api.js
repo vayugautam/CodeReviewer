@@ -5,7 +5,9 @@
  * review, wake it with a health request and wait until it becomes ready.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || "";
+const BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://code-reviewer-api.onrender.com";
 const HEALTH_CHECK_INTERVAL_MS = 2000;
 const HEALTH_CHECK_TIMEOUT_MS = 120000;
 
@@ -25,7 +27,7 @@ export async function waitForBackend(onStatus) {
 
   while (Date.now() - startedAt < HEALTH_CHECK_TIMEOUT_MS) {
     try {
-      const response = await fetch(`${BASE_URL}/health`, {
+      const response = await fetch(`${BASE_URL}/ping`, {
         method: "GET",
         cache: "no-store",
       });

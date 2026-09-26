@@ -54,7 +54,7 @@ app.include_router(review_router)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
-@app.get("/health", tags=["meta"])
-def health() -> dict[str, str]:
+@app.get("/ping", tags=["meta"])
+def ping() -> dict[str, str]:
     """Simple liveness probe — confirms the server is running."""
     return {"status": "ok"}
