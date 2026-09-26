@@ -11,7 +11,7 @@ services:
       - key: GITHUB_TOKEN
         sync: false
       - key: FRONTEND_ORIGIN
-        value: https://code-reviewer-frontend.onrender.com
+        value: https://codereviewer-1-jdgg.onrender.com
 
   - type: web
     name: code-reviewer-frontend
@@ -21,4 +21,4 @@ services:
     staticPublishPath: ./dist
     envVars:
       - key: VITE_API_URL
-        value: https://code-reviewer-api.onrender.com
+        value: https://codereviewer-75lk.onrender.com
